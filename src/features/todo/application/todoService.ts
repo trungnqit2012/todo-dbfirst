@@ -1,54 +1,50 @@
-import { supabase } from "../../../infrastructure/supabase/supabaseClient";
-import type { Todo } from "../domain/entities/Todo";
+import { Todo } from "../domain/entities/Todo";
+
+const API_BASE = "http://localhost:4000/api";
+
+async function handleResponse<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "API request failed");
+  }
+  return res.json();
+}
 
 export const todoService = {
   async loadTodos(): Promise<Todo[]> {
-    const { data, error } = await supabase
-      .from("todos")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-
-    return data ?? [];
+    const res = await fetch(`${API_BASE}/todos`);
+    return handleResponse<Todo[]>(res);
   },
 
-  async addTodo(title: string): Promise<void> {
-    // Lấy user hiện tại
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      throw new Error("User not authenticated");
-    }
-
-    const { error } = await supabase.from("todos").insert({
-      title,
-      completed: false,
-      user_id: user.id, // 👈 bắt buộc cho RLS
+  async addTodo(title: string): Promise<Todo> {
+    const res = await fetch(`${API_BASE}/todos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
     });
 
-    if (error) throw error;
+    return handleResponse<Todo>(res);
   },
 
   async toggleTodo(todo: Todo): Promise<Todo> {
-    const { data, error } = await supabase
-      .from("todos")
-      .update({ completed: !todo.completed })
-      .eq("id", todo.id)
-      .select()
-      .single();
+    const res = await fetch(`${API_BASE}/todos/${todo.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        completed: !todo.completed,
+      }),
+    });
 
-    if (error) throw error;
-
-    return data;
+    return handleResponse<Todo>(res);
   },
 
   async removeTodo(id: string): Promise<void> {
-    const { error } = await supabase.from("todos").delete().eq("id", id);
+    const res = await fetch(`${API_BASE}/todos/${id}`, {
+      method: "DELETE",
+    });
 
-    if (error) throw error;
+    if (!res.ok) {
+      throw new Error("Failed to delete todo");
+    }
   },
 };
