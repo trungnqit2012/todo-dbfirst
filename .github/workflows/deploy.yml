@@ -80,3 +80,88 @@ jobs:
 
             pm2 save
             pm2 status
+name: Deploy Todo App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ======================
+      # 1️⃣ Checkout code
+      # ======================
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ======================
+      # 2️⃣ Setup Node
+      # ======================
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # ======================
+      # 3️⃣ Build FRONTEND (Vite ở ROOT)
+      # ======================
+      - name: Build frontend (Vite)
+        env:
+          VITE_DEMO_EMAIL: ${{ secrets.VITE_DEMO_EMAIL }}
+          VITE_DEMO_PASSWORD: ${{ secrets.VITE_DEMO_PASSWORD }}
+          VITE_DEMO_MODE: ${{ secrets.VITE_DEMO_MODE }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+        run: |
+          npm ci
+          npm run build
+
+      # ======================
+      # 4️⃣ Deploy FRONTEND → EC2
+      # ======================
+      - name: Deploy frontend to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "dist/*"
+          target: ${{ secrets.EC2_PATH_FRONTEND }}
+          strip_components: 1
+
+      # ======================
+      # 5️⃣ Deploy BACKEND + restart API
+      # ======================
+      - name: Deploy backend & restart API
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+
+            cd ${{ secrets.EC2_PATH_BACKEND }}
+
+            echo "==> Clean old build"
+            rm -rf dist
+
+            echo "==> Install deps"
+            npm ci
+
+            echo "==> Build backend"
+            npm run build
+
+            echo "==> Restart PM2"
+            if pm2 describe api >/dev/null 2>&1; then
+              pm2 delete api
+            fi
+
+            pm2 start dist/index.js --name todo-api
+            pm2 save
+
+            echo "==> PM2 status"
+            pm2 status
