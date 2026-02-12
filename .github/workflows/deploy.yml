@@ -51,7 +51,7 @@ jobs:
           strip_components: 1
 
       # ======================
-      # 5️⃣ Deploy BACKEND + restart API
+      # 5️⃣ Deploy BACKEND + restart API (FINAL FIX)
       # ======================
       - name: Deploy backend & restart API
         uses: appleboy/ssh-action@v1.0.3
@@ -74,12 +74,11 @@ jobs:
             npm run build
 
             echo "==> Restart PM2"
-            if pm2 describe api >/dev/null 2>&1; then
-              pm2 delete api
+            if pm2 describe todo-api >/dev/null 2>&1; then
+              pm2 restart todo-api
+            else
+              pm2 start dist/index.js --name todo-api
             fi
 
-            pm2 start dist/index.js --name todo-api
             pm2 save
-
-            echo "==> PM2 status"
             pm2 status
