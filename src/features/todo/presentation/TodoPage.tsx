@@ -1,6 +1,5 @@
 import { useRef, useState, useEffect } from "react";
 import { useAuth } from "../../auth/presentation/hooks/useAuth";
-import { authService } from "../../auth/application/authService";
 
 import { useTodos } from "./hooks/useTodos";
 import { useConfirmClearCompleted } from "./hooks/useConfirmClearCompleted";
@@ -79,13 +78,6 @@ export function TodoPage() {
 
           <div className="flex items-center gap-3 text-sm text-slate-600">
             <span className="hidden sm:inline">{user.email}</span>
-
-            <button
-              onClick={() => authService.logout()}
-              className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              Logout
-            </button>
           </div>
         </header>
 

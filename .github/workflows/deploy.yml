@@ -1,43 +1,49 @@
-name: Deploy Todo React App to EC2
+name: Deploy Todo App
 
 on:
   push:
-    branches:
-      - main
+    branches: ["main"]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      VITE_DEMO_MODE: ${{ secrets.VITE_DEMO_MODE }}
-      VITE_DEMO_EMAIL: ${{ secrets.VITE_DEMO_EMAIL }}
-      VITE_DEMO_PASSWORD: ${{ secrets.VITE_DEMO_PASSWORD }}
-
     steps:
-      - name: Checkout source code
+      # =====================
+      # CHECKOUT
+      # =====================
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
+      # =====================
+      # FRONTEND (ROOT)
+      # =====================
+      - name: Build frontend (Vite)
+        run: |
+          npm ci
+          npm run build
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Vite app
-        run: npm run build
-
-      - name: Deploy to EC2 via SCP
+      - name: Deploy frontend to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
+          username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "dist/*"
-          target: "/var/www/todo"
+          target: ${{ secrets.EC2_PATH_FRONTEND }}
           strip_components: 1
+
+      # =====================
+      # BACKEND
+      # =====================
+      - name: Deploy backend & restart API
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ${{ secrets.EC2_PATH_BACKEND }}
+            npm ci
+            npm run build
+            npx pm2 restart todo-api || npx pm2 start dist/index.js --name todo-api
