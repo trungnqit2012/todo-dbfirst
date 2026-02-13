@@ -31,7 +31,7 @@ export interface FetchTodosPagedResult {
   sortOrder: SortOrder;
 }
 
-const API_BASE = "/api";
+const API_BASE = "/api/todos";
 
 /* ==============================
    Helpers
