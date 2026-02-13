@@ -1,4 +1,5 @@
 import { Todo } from "../domain/entities/Todo";
+import { APP_CONFIG } from "../../../core/config/app.config";
 
 /* ==============================
    Types
@@ -31,7 +32,7 @@ export interface FetchTodosPagedResult {
   sortOrder: SortOrder;
 }
 
-const API_BASE = "http://localhost:4000/api/todos";
+const API_BASE = APP_CONFIG.API_BASE_URL + "api/todos";
 
 /* ==============================
    Helpers
