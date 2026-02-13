@@ -13,10 +13,13 @@ export function TodoFilter({
   disabled,
   onClearCompleted,
 }: Props) {
-  const baseBtn = "px-3 py-1 rounded-lg text-sm transition cursor-pointer";
+  const focusRing =
+    "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1";
 
-  const activeStyle = "bg-blue-500 text-white";
+  const baseBtn =
+    "px-3 py-1 rounded-lg text-sm transition cursor-pointer " + focusRing;
 
+  const activeStyle = "bg-blue-100 text-blue-700";
   const inactiveStyle = "bg-slate-100 text-slate-600 hover:bg-slate-200";
 
   return (
@@ -48,12 +51,18 @@ export function TodoFilter({
         Completed
       </button>
 
-      {/* CLEAR BUTTON */}
-      <div className="relative group">
+      {/* CLEAR */}
+      <div className="relative group flex items-center ml-2">
         <button
           onClick={onClearCompleted}
           disabled={disabled || completedCount === 0}
-          className="text-red-500 hover:text-red-600 text-sm disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+          className="
+            whitespace-nowrap
+            text-red-500 hover:text-red-600 text-sm
+            disabled:opacity-40 disabled:cursor-not-allowed
+            transition cursor-pointer 
+            focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1
+          "
         >
           Clear ({completedCount})
         </button>
@@ -62,9 +71,9 @@ export function TodoFilter({
         {completedCount > 0 && (
           <div
             className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2
-                          bg-slate-800 text-white text-xs px-3 py-1 rounded-lg
-                          opacity-0 group-hover:opacity-100
-                          pointer-events-none transition whitespace-nowrap"
+                       bg-slate-800 text-white text-xs px-3 py-1 rounded-lg
+                       opacity-0 group-hover:opacity-100
+                       pointer-events-none transition whitespace-nowrap"
           >
             Clear {completedCount} completed todo
           </div>

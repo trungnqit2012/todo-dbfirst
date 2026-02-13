@@ -6,9 +6,16 @@ interface Props {
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   deletingId?: string | null;
+  highlight?: string;
 }
 
-export function TodoList({ todos, onToggle, onDelete, deletingId }: Props) {
+export function TodoList({
+  todos,
+  onToggle,
+  onDelete,
+  deletingId,
+  highlight = "",
+}: Props) {
   if (todos.length === 0) return null;
 
   return (
@@ -20,6 +27,7 @@ export function TodoList({ todos, onToggle, onDelete, deletingId }: Props) {
           onToggle={onToggle}
           onDelete={onDelete}
           isDeleting={deletingId === todo.id}
+          highlight={highlight}
         />
       ))}
     </ul>

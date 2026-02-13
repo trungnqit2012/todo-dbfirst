@@ -2,17 +2,19 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { Todo } from "../../domain/entities/Todo";
-import { Filter, filterTodos } from "../../domain/usecases/filterTodos";
-import { paginateTodos } from "../../domain/usecases/paginateTodos";
 import { todoService } from "../../application/todoService";
 import { APP_CONFIG } from "../../../../core/config/app.config";
+
+export type Filter = "all" | "active" | "completed";
+export type SortBy = "createdAt" | "title" | "status";
+export type SortOrder = "asc" | "desc";
 
 export function useTodos() {
   const PAGE_SIZE = APP_CONFIG.PAGE_SIZE;
   const [searchParams, setSearchParams] = useSearchParams();
 
   /* ==============================
-     INITIAL STATE (LAZY INIT)
+     STATE FROM URL
   ============================== */
 
   const [page, setPage] = useState(() => {
@@ -24,28 +26,59 @@ export function useTodos() {
     return (searchParams.get("filter") as Filter) || "all";
   });
 
+  const [sortBy, setSortBy] = useState<SortBy>(() => {
+    return (searchParams.get("sortBy") as SortBy) || "createdAt";
+  });
+
+  const [sortOrder, setSortOrder] = useState<SortOrder>(() => {
+    return (searchParams.get("sortOrder") as SortOrder) || "desc";
+  });
+
+  const [q, setQ] = useState(() => searchParams.get("q") || "");
+  const [debouncedQ, setDebouncedQ] = useState(q);
+
   const hasMounted = useRef(false);
 
   /* ==============================
-     TODOS STATE
+     ERROR STATE (TOAST-READY) ✅ NEW
+  ============================== */
+
+  const [error, setError] = useState<string | null>(null);
+
+  /* ==============================
+     DEBOUNCE SEARCH
+  ============================== */
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedQ(q);
+      setPage(1);
+    }, 300);
+
+    return () => clearTimeout(t);
+  }, [q]);
+
+  /* ==============================
+     DATA
   ============================== */
 
   const [todos, setTodos] = useState<Todo[]>([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
 
   const [pendingDelete, setPendingDelete] = useState<Todo | null>(null);
-
   const [undoTimer, setUndoTimer] = useState<ReturnType<
     typeof setTimeout
   > | null>(null);
-
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const hasPendingDelete = !!pendingDelete;
 
   /* ==============================
-     SYNC STATE → URL (NO searchParams dep)
+     SYNC URL
   ============================== */
 
   useEffect(() => {
@@ -57,43 +90,49 @@ export function useTodos() {
     setSearchParams({
       page: String(page),
       filter,
+      sortBy,
+      sortOrder,
+      q,
     });
-  }, [page, filter, setSearchParams]);
+  }, [page, filter, sortBy, sortOrder, q, setSearchParams]);
 
   /* ==============================
-     LOAD TODOS
+     LOAD TODOS (WITH ERROR HANDLING) ✅
   ============================== */
 
   useEffect(() => {
     async function load() {
+      setLoading(true);
       try {
-        const data = await todoService.loadTodos();
-        setTodos(data);
+        const res = await todoService.loadTodosPaged({
+          page,
+          pageSize: PAGE_SIZE,
+          sortBy,
+          sortOrder,
+          filter,
+          q: debouncedQ,
+        });
+
+        setTodos(res.items);
+        setTotalPages(res.totalPages);
+        setTotalItems(res.totalItems);
+      } catch {
+        setError("Failed to load todos");
       } finally {
         setLoading(false);
       }
     }
 
     load();
-  }, []);
+  }, [page, filter, sortBy, sortOrder, debouncedQ, PAGE_SIZE]);
 
   /* ==============================
      DERIVED
   ============================== */
 
-  const filteredTodos = useMemo(
-    () => filterTodos(todos, filter),
-    [todos, filter],
-  );
-
-  const { items: pagedTodos, totalPages } = useMemo(
-    () => paginateTodos(filteredTodos, page, PAGE_SIZE),
-    [filteredTodos, page],
-  );
-
   const itemsLeft = useMemo(
-    () => todos.filter((t) => !t.completed).length,
-    [todos],
+    () => totalItems - todos.filter((t) => !t.completed).length,
+    [totalItems, todos],
   );
 
   const completedCount = useMemo(
@@ -102,16 +141,16 @@ export function useTodos() {
   );
 
   /* ==============================
-     ACTIONS
+     ACTIONS (WITH ERROR HANDLING) ✅
   ============================== */
 
   async function add(title: string) {
     setIsAdding(true);
     try {
       await todoService.addTodo(title);
-      const fresh = await todoService.loadTodos();
-      setTodos(fresh);
-      setPage(1); // reset về page 1 khi add
+      setPage(1);
+    } catch {
+      setError("Failed to add todo");
     } finally {
       setIsAdding(false);
     }
@@ -121,9 +160,12 @@ export function useTodos() {
     const todo = todos.find((t) => t.id === id);
     if (!todo) return;
 
-    const updated = await todoService.toggleTodo(todo);
-
-    setTodos((prev) => prev.map((t) => (t.id === id ? updated : t)));
+    try {
+      const updated = await todoService.toggleTodo(todo);
+      setTodos((prev) => prev.map((t) => (t.id === id ? updated : t)));
+    } catch {
+      setError("Failed to update todo");
+    }
   }
 
   function remove(id: string) {
@@ -134,13 +176,17 @@ export function useTodos() {
 
     setTimeout(() => {
       setTodos((prev) => prev.filter((t) => t.id !== id));
-
       setPendingDelete(todo);
       setDeletingId(null);
 
       const timer = setTimeout(async () => {
-        await todoService.removeTodo(id);
-        setPendingDelete(null);
+        try {
+          await todoService.removeTodo(id);
+        } catch {
+          setError("Failed to delete todo");
+        } finally {
+          setPendingDelete(null);
+        }
       }, 5000);
 
       setUndoTimer(timer);
@@ -149,7 +195,6 @@ export function useTodos() {
 
   function undoDelete() {
     if (!pendingDelete) return;
-
     if (undoTimer) clearTimeout(undoTimer);
 
     setTodos((prev) => [pendingDelete, ...prev]);
@@ -157,13 +202,21 @@ export function useTodos() {
   }
 
   async function clearCompleted() {
-    const completed = todos.filter((t) => t.completed);
-
-    for (const todo of completed) {
-      await todoService.removeTodo(todo.id);
+    try {
+      const completed = todos.filter((t) => t.completed);
+      for (const todo of completed) {
+        await todoService.removeTodo(todo.id);
+      }
+      setPage(1);
+    } catch {
+      setError("Failed to clear completed todos");
     }
+  }
 
-    setTodos((prev) => prev.filter((t) => !t.completed));
+  function changeSort(nextSortBy: SortBy, nextSortOrder: SortOrder) {
+    setSortBy(nextSortBy);
+    setSortOrder(nextSortOrder);
+    setPage(1);
   }
 
   function nextPage() {
@@ -175,25 +228,22 @@ export function useTodos() {
   }
 
   /* ==============================
-     SAFE CLAMP (after data exists)
-  ============================== */
-
-  useEffect(() => {
-    if (todos.length > 0 && page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages, todos.length]);
-
-  /* ==============================
      RETURN
   ============================== */
 
   return {
-    todos: pagedTodos,
+    todos,
     loading,
 
     filter,
     setFilter,
+
+    sortBy,
+    sortOrder,
+    changeSort,
+
+    q,
+    setQ,
 
     itemsLeft,
     completedCount,
@@ -214,5 +264,9 @@ export function useTodos() {
     pendingDelete,
     undoDelete,
     deletingId,
+
+    /* 🔔 TOAST-READY */
+    error,
+    clearError: () => setError(null),
   };
 }

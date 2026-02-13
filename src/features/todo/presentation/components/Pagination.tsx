@@ -49,13 +49,10 @@ export function Pagination({
       <button
         onClick={onPrev}
         disabled={page === 1 || disabled}
-        className="
-          px-3 py-1.5 rounded-xl
-          bg-slate-100 text-slate-600
-          hover:bg-slate-200
-          disabled:opacity-40
-          transition cursor-pointer disabled:cursor-not-allowed
-        "
+        className="px-3 py-1 rounded
+  transition-all duration-150
+  focus:outline-none
+  focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
       >
         Prev
       </button>
@@ -97,13 +94,10 @@ export function Pagination({
         <button
           onClick={onNext}
           disabled={page === totalPages || disabled}
-          className="
-            px-3 py-1.5 rounded-xl
-            bg-slate-100 text-slate-600
-            hover:bg-slate-200
-            disabled:opacity-40
-            transition cursor-pointer disabled:cursor-not-allowed
-          "
+          className="px-3 py-1 rounded
+  transition-all duration-150
+  focus:outline-none
+  focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Next
         </button>
@@ -140,7 +134,10 @@ function PageButton({
     <button
       onClick={() => onClick(pageNumber)}
       className={`
-        px-3 py-1.5 rounded-xl transition cursor-pointer disabled:cursor-not-allowed
+        px-3 py-1 rounded
+  transition-all duration-150
+  focus:outline-none
+  focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 cursor-pointer disabled:cursor-not-allowed
         ${
           isActive
             ? "bg-blue-600 text-white shadow-sm"

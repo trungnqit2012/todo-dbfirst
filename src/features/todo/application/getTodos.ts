@@ -1,5 +1,25 @@
-import { fetchTodos } from "../infrastructure/apiTodoRepository";
+import {
+  fetchTodosPaged,
+  FetchTodosParams,
+  FetchTodosResult,
+} from "../infrastructure/apiTodoRepository";
 
-export function getTodos() {
-  return fetchTodos();
+/* ================================
+   Re-export types cho layer trên
+================================ */
+
+export type SortBy = FetchTodosParams["sortBy"];
+export type SortOrder = FetchTodosParams["sortOrder"];
+
+export type GetTodosParams = FetchTodosParams;
+export type GetTodosResult = FetchTodosResult;
+
+/* ================================
+   Use case
+================================ */
+
+export async function getTodos(
+  params: GetTodosParams,
+): Promise<GetTodosResult> {
+  return fetchTodosPaged(params);
 }

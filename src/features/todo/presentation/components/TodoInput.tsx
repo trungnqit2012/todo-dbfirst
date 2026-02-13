@@ -1,4 +1,5 @@
 import { forwardRef } from "react";
+import { inputBase } from "../../../../shared/styles/input";
 
 interface Props {
   value: string;
@@ -23,13 +24,14 @@ export const TodoInput = forwardRef<HTMLInputElement, Props>(
               if (e.key === "Enter") onSubmit();
             }}
             placeholder="Nhập việc cần làm..."
-            className="flex-1 px-4 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className={`${inputBase} w-full px-4 py-2.5 text-base
+  focus:ring-blue-500`}
           />
 
           <button
             onClick={onSubmit}
             disabled={!value.trim() || isAdding}
-            className="px-4 py-2 rounded-xl bg-blue-500 text-white disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-lg bg-blue-500 text-white disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
           >
             + Add
           </button>

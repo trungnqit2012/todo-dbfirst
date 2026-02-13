@@ -1,21 +1,29 @@
 import type { Todo } from "../../domain/entities/Todo";
+import { highlightText } from "./highlight";
 
 type Props = {
   todo: Todo;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   isDeleting?: boolean;
+  highlight?: string; // 👈 NEW
 };
 
-export function TodoItem({ todo, onToggle, onDelete, isDeleting }: Props) {
+export function TodoItem({
+  todo,
+  onToggle,
+  onDelete,
+  isDeleting,
+  highlight = "",
+}: Props) {
   return (
     <li
       className={`
         flex items-center gap-3
         px-4 py-3 rounded-xl
         bg-slate-50
-        transition-all duration-200 ease-out
-        ${todo.completed ? "opacity-70 scale-[0.98]" : ""}
+        transition-all duration-200 ease-out focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
+        ${todo.completed ? "scale-[0.98]" : ""}
         ${isDeleting ? "opacity-0 translate-x-4 scale-95" : ""}
       `}
     >
@@ -39,10 +47,10 @@ export function TodoItem({ todo, onToggle, onDelete, isDeleting }: Props) {
         className={`
           flex-1 min-w-0 break-words
           transition-all duration-200
-          ${todo.completed ? "line-through text-slate-400" : "text-slate-700"}
+          ${todo.completed ? "line-through text-slate-500" : "text-slate-700"}
         `}
       >
-        {todo.title}
+        {highlightText(todo.title, highlight)}
       </span>
 
       <button
