@@ -8,9 +8,9 @@ import {
   SortOrder,
 } from "../infrastructure/apiTodoRepository";
 
-/* ================================
-   Types cho paging + sorting
-================================ */
+/* ==============================
+   Types
+============================== */
 
 export interface LoadTodosPagedParams {
   page: number;
@@ -27,23 +27,26 @@ export interface LoadTodosPagedResult {
   pageSize: number;
   totalItems: number;
   totalPages: number;
+
+  // ⭐ MUST HAVE
+  totalActive: number;
+  totalCompleted: number;
+
   sortBy: SortBy;
   sortOrder: SortOrder;
 }
 
-/* ================================
+/* ==============================
    Service
-================================ */
+============================== */
 
 export const todoService = {
-  // ===== READ (DB-first) =====
   async loadTodosPaged(
     params: LoadTodosPagedParams,
   ): Promise<LoadTodosPagedResult> {
     return fetchTodosPaged(params);
   },
 
-  // ===== WRITE =====
   async addTodo(title: string): Promise<Todo> {
     return createTodo(title);
   },

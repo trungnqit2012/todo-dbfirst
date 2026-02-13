@@ -125,12 +125,12 @@ export function TodoPage() {
           </div>
 
           {/* STATS + SORT + FILTER (GRID FIX) */}
-          <div className="grid grid-cols-[auto,1fr] items-center mb-4 text-sm text-slate-500 gap-3">
-            {/* LEFT */}
+          <div className="grid grid-cols-[auto_1fr] items-center mb-4 text-sm text-slate-500 gap-3">
+            {/* LEFT: ITEMS LEFT */}
             <span className="whitespace-nowrap">{itemsLeft} items left</span>
 
-            {/* RIGHT */}
-            <div className="flex items-center gap-3 justify-end flex-wrap">
+            {/* RIGHT: SORT + FILTER */}
+            <div className="flex items-center gap-2 justify-end flex-wrap">
               <TodoSort
                 value={{ sortBy, sortOrder }}
                 onChange={changeSort}

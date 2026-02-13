@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { Todo } from "../../domain/entities/Todo";
@@ -40,7 +40,7 @@ export function useTodos() {
   const hasMounted = useRef(false);
 
   /* ==============================
-     ERROR STATE (TOAST-READY) ✅ NEW
+     ERROR (TOAST-READY)
   ============================== */
 
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +64,10 @@ export function useTodos() {
 
   const [todos, setTodos] = useState<Todo[]>([]);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
+
+  // ⭐ GLOBAL COUNTS (SOURCE OF TRUTH)
+  const [totalActive, setTotalActive] = useState(0);
+  const [totalCompleted, setTotalCompleted] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
@@ -97,7 +100,7 @@ export function useTodos() {
   }, [page, filter, sortBy, sortOrder, q, setSearchParams]);
 
   /* ==============================
-     LOAD TODOS (WITH ERROR HANDLING) ✅
+     LOAD TODOS (PAGED)
   ============================== */
 
   useEffect(() => {
@@ -115,7 +118,10 @@ export function useTodos() {
 
         setTodos(res.items);
         setTotalPages(res.totalPages);
-        setTotalItems(res.totalItems);
+
+        // ⭐ COUNTS KHÔNG BAO GIỜ DỰA PAGING
+        setTotalActive(res.totalActive);
+        setTotalCompleted(res.totalCompleted);
       } catch {
         setError("Failed to load todos");
       } finally {
@@ -127,21 +133,14 @@ export function useTodos() {
   }, [page, filter, sortBy, sortOrder, debouncedQ, PAGE_SIZE]);
 
   /* ==============================
-     DERIVED
+     DERIVED (DOMAIN-CORRECT)
   ============================== */
 
-  const itemsLeft = useMemo(
-    () => totalItems - todos.filter((t) => !t.completed).length,
-    [totalItems, todos],
-  );
-
-  const completedCount = useMemo(
-    () => todos.filter((t) => t.completed).length,
-    [todos],
-  );
+  const itemsLeft = totalActive;
+  const completedCount = totalCompleted;
 
   /* ==============================
-     ACTIONS (WITH ERROR HANDLING) ✅
+     ACTIONS
   ============================== */
 
   async function add(title: string) {
@@ -162,7 +161,14 @@ export function useTodos() {
 
     try {
       const updated = await todoService.toggleTodo(todo);
+
       setTodos((prev) => prev.map((t) => (t.id === id ? updated : t)));
+
+      // optimistic global count update
+      if (todo.completed !== updated.completed) {
+        setTotalActive((n) => (updated.completed ? n - 1 : n + 1));
+        setTotalCompleted((n) => (updated.completed ? n + 1 : n - 1));
+      }
     } catch {
       setError("Failed to update todo");
     }
@@ -178,6 +184,13 @@ export function useTodos() {
       setTodos((prev) => prev.filter((t) => t.id !== id));
       setPendingDelete(todo);
       setDeletingId(null);
+
+      // optimistic global count update
+      if (todo.completed) {
+        setTotalCompleted((n) => n - 1);
+      } else {
+        setTotalActive((n) => n - 1);
+      }
 
       const timer = setTimeout(async () => {
         try {
@@ -198,13 +211,22 @@ export function useTodos() {
     if (undoTimer) clearTimeout(undoTimer);
 
     setTodos((prev) => [pendingDelete, ...prev]);
+
+    // rollback counts
+    if (pendingDelete.completed) {
+      setTotalCompleted((n) => n + 1);
+    } else {
+      setTotalActive((n) => n + 1);
+    }
+
     setPendingDelete(null);
   }
 
   async function clearCompleted() {
+    if (totalCompleted === 0) return;
+
     try {
-      const completed = todos.filter((t) => t.completed);
-      for (const todo of completed) {
+      for (const todo of todos.filter((t) => t.completed)) {
         await todoService.removeTodo(todo.id);
       }
       setPage(1);
@@ -265,7 +287,7 @@ export function useTodos() {
     undoDelete,
     deletingId,
 
-    /* 🔔 TOAST-READY */
+    // 🔔 toast-ready
     error,
     clearError: () => setError(null),
   };
