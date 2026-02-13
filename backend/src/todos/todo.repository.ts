@@ -23,7 +23,10 @@ export async function getTodosPaged({
   filter,
   q,
 }: GetTodosPagedParams) {
-  const skip = (page - 1) * pageSize;
+  /* ---------- defensive ---------- */
+  const safePage = Math.max(page || 1, 1);
+  const safePageSize = Math.max(pageSize || 5, 1);
+  const skip = (safePage - 1) * safePageSize;
 
   /* ==============================
      WHERE (FILTER + SEARCH)
@@ -41,15 +44,12 @@ export async function getTodosPaged({
   }
 
   /* ==============================
-     ORDER BY (GLOBAL → STABLE)
+     ORDER BY (STABLE)
   ============================== */
   let orderBy: Prisma.TodoOrderByWithRelationInput[];
 
   if (sortBy === "status") {
-    orderBy = [
-      { completed: sortOrder },
-      { createdAt: "desc" }, // secondary stable sort
-    ];
+    orderBy = [{ completed: sortOrder }, { createdAt: "desc" }];
   } else {
     orderBy = [{ [sortBy]: sortOrder }];
   }
@@ -63,7 +63,7 @@ export async function getTodosPaged({
         where,
         orderBy,
         skip,
-        take: pageSize,
+        take: safePageSize,
       }),
       prisma.todo.count({ where }),
       prisma.todo.count({ where: { completed: false } }),
@@ -71,11 +71,11 @@ export async function getTodosPaged({
     ]);
 
   return {
-    items,
-    page,
-    pageSize,
+    items, // ALWAYS array
+    page: safePage,
+    pageSize: safePageSize,
     totalItems,
-    totalPages: Math.max(1, Math.ceil(totalItems / pageSize)),
+    totalPages: Math.max(1, Math.ceil(totalItems / safePageSize)),
     totalActive,
     totalCompleted,
     sortBy,

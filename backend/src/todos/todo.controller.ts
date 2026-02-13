@@ -5,6 +5,9 @@ import {
   createTodo,
   toggleTodo,
   deleteTodo,
+  SortBy,
+  SortOrder,
+  Filter,
 } from "./todo.repository";
 
 /* ==============================
@@ -34,13 +37,38 @@ export async function getTodosHandler(req: Request, res: Response) {
       q,
     } = req.query;
 
+    /* ---------- validate + normalize ---------- */
+
+    const pageNum = Math.max(Number(page) || 1, 1);
+    const pageSizeNum = Math.max(Number(pageSize) || 5, 1);
+
+    const allowedSortBy: SortBy[] = ["createdAt", "title", "status"];
+    const allowedSortOrder: SortOrder[] = ["asc", "desc"];
+    const allowedFilter: Filter[] = ["all", "active", "completed"];
+
+    const safeSortBy: SortBy = allowedSortBy.includes(sortBy as SortBy)
+      ? (sortBy as SortBy)
+      : "createdAt";
+
+    const safeSortOrder: SortOrder = allowedSortOrder.includes(
+      sortOrder as SortOrder,
+    )
+      ? (sortOrder as SortOrder)
+      : "desc";
+
+    const safeFilter: Filter = allowedFilter.includes(filter as Filter)
+      ? (filter as Filter)
+      : "all";
+
+    /* ---------- query ---------- */
+
     const result = await getTodosPaged({
-      page: Number(page),
-      pageSize: Number(pageSize),
-      sortBy: sortBy as any,
-      sortOrder: sortOrder as any,
-      filter: filter as any,
-      ...(typeof q === "string" ? { q } : {}),
+      page: pageNum,
+      pageSize: pageSizeNum,
+      sortBy: safeSortBy,
+      sortOrder: safeSortOrder,
+      filter: safeFilter,
+      ...(typeof q === "string" && q.trim() ? { q } : {}),
     });
 
     res.json(result);
